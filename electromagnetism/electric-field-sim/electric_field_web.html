@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Electric Field Simulator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d0d1a; color: #e0e0ff; font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
+  header { padding: 1.2rem 2rem; border-bottom: 1px solid #1e1e3a; display: flex; align-items: center; gap: 1rem; }
+  header h1 { font-size: 1.3rem; font-weight: 600; color: #e0e0ff; }
+  header p { font-size: 0.85rem; color: #7070aa; }
+  .main { display: grid; grid-template-columns: 1fr 300px; gap: 0; height: calc(100vh - 60px); }
+  canvas { display: block; width: 100%; height: 100%; }
+  .sidebar { background: #0a0a16; border-left: 1px solid #1e1e3a; padding: 1.2rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1.2rem; }
+  .section-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; color: #4444aa; text-transform: uppercase; margin-bottom: 0.6rem; }
+  .charge-card { background: #111128; border: 1px solid #1e1e3a; border-radius: 10px; padding: 0.9rem; }
+  .charge-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.8rem; }
+  .charge-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .charge-label { font-size: 0.85rem; font-weight: 600; }
+  .slider-row { margin-bottom: 0.6rem; }
+  .slider-row label { display: flex; justify-content: space-between; font-size: 0.75rem; color: #7070aa; margin-bottom: 3px; }
+  .slider-row label span { color: #a0a0cc; font-weight: 600; }
+  input[type=range] { width: 100%; height: 4px; -webkit-appearance: none; appearance: none; background: #2a2a4a; border-radius: 2px; outline: none; cursor: pointer; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #6666cc; cursor: pointer; }
+  .probe-card { background: #0a1a14; border: 1px solid #1a3a2a; border-radius: 10px; padding: 0.9rem; }
+  .probe-card .charge-dot { background: #00ffaa; }
+  .probe-card .charge-label { color: #00ffaa; }
+  .probe-card input[type=range]::-webkit-slider-thumb { background: #00ffaa; }
+  .probe-card input[type=range] { background: #1a3a2a; }
+  .results { background: #0a0a16; border: 1px solid #1e1e3a; border-radius: 10px; padding: 0.9rem; }
+  .result-row { display: flex; justify-content: space-between; align-items: center; padding: 0.3rem 0; border-bottom: 1px solid #1a1a2a; }
+  .result-row:last-child { border-bottom: none; }
+  .result-row .rlabel { font-size: 0.78rem; color: #7070aa; }
+  .result-row .rvalue { font-size: 0.85rem; font-weight: 600; color: #00ffaa; font-family: monospace; }
+  .vector-display { display: flex; justify-content: center; align-items: center; padding: 0.5rem 0; }
+  #vectorCanvas { border-radius: 50%; background: #111128; }
+  .reset-btn { width: 100%; padding: 0.6rem; background: #1a1a3a; border: 1px solid #3333aa; border-radius: 8px; color: #a0a0dd; font-size: 0.85rem; cursor: pointer; transition: background 0.2s; }
+  .reset-btn:hover { background: #2a2a5a; }
+  .legend { display: flex; gap: 1rem; font-size: 0.75rem; color: #7070aa; }
+  .legend-item { display: flex; align-items: center; gap: 0.3rem; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>⚡ Electric Field Simulator</h1>
+    <p>Adjust charges and probe position to explore the electric field</p>
+  </div>
+  <div class="legend" style="margin-left:auto">
+    <div class="legend-item"><div class="legend-dot" style="background:#ff4444"></div> Positive</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4488ff"></div> Negative</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#00ffaa"></div> Probe</div>
+  </div>
+</header>
+
+<div class="main">
+  <canvas id="fieldCanvas"></canvas>
+
+  <div class="sidebar">
+
+    <div class="charge-card">
+      <div class="charge-header">
+        <div class="charge-dot" id="dot1" style="background:#ff4444"></div>
+        <span class="charge-label" style="color:#ff6666">Charge 1</span>
+      </div>
+      <div class="slider-row">
+        <label>X position <span id="c1x-val">-1.0</span></label>
+        <input type="range" id="c1x" min="-2.5" max="2.5" step="0.1" value="-1.0">
+      </div>
+      <div class="slider-row">
+        <label>Y position <span id="c1y-val">0.0</span></label>
+        <input type="range" id="c1y" min="-2.5" max="2.5" step="0.1" value="0.0">
+      </div>
+      <div class="slider-row">
+        <label>Charge (q) <span id="c1q-val">+1.0</span></label>
+        <input type="range" id="c1q" min="-3.0" max="3.0" step="0.1" value="1.0">
+      </div>
+    </div>
+
+    <div class="charge-card">
+      <div class="charge-header">
+        <div class="charge-dot" id="dot2" style="background:#4488ff"></div>
+        <span class="charge-label" style="color:#6699ff">Charge 2</span>
+      </div>
+      <div class="slider-row">
+        <label>X position <span id="c2x-val">1.0</span></label>
+        <input type="range" id="c2x" min="-2.5" max="2.5" step="0.1" value="1.0">
+      </div>
+      <div class="slider-row">
+        <label>Y position <span id="c2y-val">0.0</span></label>
+        <input type="range" id="c2y" min="-2.5" max="2.5" step="0.1" value="0.0">
+      </div>
+      <div class="slider-row">
+        <label>Charge (q) <span id="c2q-val">-1.0</span></label>
+        <input type="range" id="c2q" min="-3.0" max="3.0" step="0.1" value="-1.0">
+      </div>
+    </div>
+
+    <div class="probe-card">
+      <div class="charge-header">
+        <div class="charge-dot" style="background:#00ffaa"></div>
+        <span class="charge-label">Probe point</span>
+      </div>
+      <div class="slider-row">
+        <label>X position <span id="px-val">0.0</span></label>
+        <input type="range" id="px" min="-2.5" max="2.5" step="0.1" value="0.0">
+      </div>
+      <div class="slider-row">
+        <label>Y position <span id="py-val">0.0</span></label>
+        <input type="range" id="py" min="-2.5" max="2.5" step="0.1" value="0.0">
+      </div>
+    </div>
+
+    <div class="results">
+      <div class="section-title">Field at probe</div>
+      <div class="result-row"><span class="rlabel">Position</span><span class="rvalue" id="r-pos">(0.00, 0.00)</span></div>
+      <div class="result-row"><span class="rlabel">Ex</span><span class="rvalue" id="r-ex">0.000</span></div>
+      <div class="result-row"><span class="rlabel">Ey</span><span class="rvalue" id="r-ey">0.000</span></div>
+      <div class="result-row"><span class="rlabel">|E| magnitude</span><span class="rvalue" id="r-mag">0.000</span></div>
+      <div class="result-row"><span class="rlabel">Angle</span><span class="rvalue" id="r-angle">0.0°</span></div>
+      <div class="vector-display">
+        <canvas id="vectorCanvas" width="80" height="80"></canvas>
+      </div>
+    </div>
+
+    <button class="reset-btn" onclick="resetAll()">↺ Reset to defaults</button>
+
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('fieldCanvas');
+const ctx = canvas.getContext('2d');
+const vCanvas = document.getElementById('vectorCanvas');
+const vCtx = vCanvas.getContext('2d');
+
+const GRID = 3.0;
+const N_STREAM = 20;
+
+function resize() {
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+  draw();
+}
+
+function getVals() {
+  return {
+    c1: { x: +document.getElementById('c1x').value, y: +document.getElementById('c1y').value, q: +document.getElementById('c1q').value },
+    c2: { x: +document.getElementById('c2x').value, y: +document.getElementById('c2y').value, q: +document.getElementById('c2q').value },
+    px: +document.getElementById('px').value,
+    py: +document.getElementById('py').value,
+  };
+}
+
+function fieldAt(charges, wx, wy) {
+  let ex = 0, ey = 0;
+  for (const c of charges) {
+    const dx = wx - c.x, dy = wy - c.y;
+    const r = Math.max(Math.sqrt(dx*dx + dy*dy), 0.05);
+    ex += c.q * dx / (r*r*r);
+    ey += c.q * dy / (r*r*r);
+  }
+  return { ex, ey };
+}
+
+function worldToCanvas(wx, wy, W, H) {
+  return {
+    cx: (wx + GRID) / (2*GRID) * W,
+    cy: H - (wy + GRID) / (2*GRID) * H
+  };
+}
+
+function draw() {
+  const W = canvas.width, H = canvas.height;
+  const v = getVals();
+  const charges = [v.c1, v.c2];
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0d0d1a';
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw field lines via streamlines
+  const colors = ['#ff6600','#ff4444','#cc44ff','#4488ff','#00aaff'];
+  const numSeeds = 16;
+
+  for (const c of charges) {
+    if (Math.abs(c.q) < 0.05) continue;
+    for (let i = 0; i < numSeeds; i++) {
+      const angle = (i / numSeeds) * 2 * Math.PI;
+      const sx = c.x + 0.18 * Math.cos(angle);
+      const sy = c.y + 0.18 * Math.sin(angle);
+      const dir = c.q > 0 ? 1 : -1;
+      drawStreamline(charges, sx, sy, dir, W, H);
+    }
+  }
+
+  // Draw charges
+  for (const c of charges) {
+    const {cx, cy} = worldToCanvas(c.x, c.y, W, H);
+    const r = 10;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, 2*Math.PI);
+    ctx.fillStyle = c.q >= 0 ? '#ff4444' : '#4488ff';
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(c.q >= 0 ? '+' : '−', cx, cy);
+
+    const label = (c.q >= 0 ? '+' : '') + c.q.toFixed(1);
+    ctx.fillStyle = c.q >= 0 ? '#ff6666' : '#6699ff';
+    ctx.font = '11px sans-serif';
+    ctx.fillText(label, cx, cy - 18);
+  }
+
+  // Draw probe
+  const {cx: pcx, cy: pcy} = worldToCanvas(v.px, v.py, W, H);
+  ctx.beginPath();
+  const ps = 8;
+  ctx.moveTo(pcx - ps, pcy - ps); ctx.lineTo(pcx + ps, pcy + ps);
+  ctx.moveTo(pcx + ps, pcy - ps); ctx.lineTo(pcx - ps, pcy + ps);
+  ctx.strokeStyle = '#00ffaa';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  ctx.fillStyle = '#00ffaa';
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('probe', pcx + 10, pcy - 6);
+
+  // Update readouts
+  const { ex, ey } = fieldAt(charges, v.px, v.py);
+  const mag = Math.sqrt(ex*ex + ey*ey);
+  const angle = Math.atan2(ey, ex) * 180 / Math.PI;
+
+  document.getElementById('r-pos').textContent = `(${v.px.toFixed(2)}, ${v.py.toFixed(2)})`;
+  document.getElementById('r-ex').textContent = ex.toFixed(3);
+  document.getElementById('r-ey').textContent = ey.toFixed(3);
+  document.getElementById('r-mag').textContent = mag.toFixed(3);
+  document.getElementById('r-angle').textContent = angle.toFixed(1) + '°';
+
+  drawVector(ex, ey, mag);
+}
+
+function drawStreamline(charges, sx, sy, dir, W, H) {
+  const steps = 300, dt = 0.04;
+  let wx = sx, wy = sy;
+  ctx.beginPath();
+  const {cx, cy} = worldToCanvas(wx, wy, W, H);
+  ctx.moveTo(cx, cy);
+  ctx.strokeStyle = 'rgba(160,140,255,0.35)';
+  ctx.lineWidth = 1;
+
+  let prevAngle = null;
+  for (let i = 0; i < steps; i++) {
+    const {ex, ey} = fieldAt(charges, wx, wy);
+    const mag = Math.sqrt(ex*ex + ey*ey);
+    if (mag < 0.001) break;
+    const nx = wx + dir * (ex/mag) * dt;
+    const ny = wy + dir * (ey/mag) * dt;
+    if (Math.abs(nx) > GRID*1.1 || Math.abs(ny) > GRID*1.1) break;
+
+    // stop near opposite charge
+    let nearCharge = false;
+    for (const c of charges) {
+      const d = Math.sqrt((nx-c.x)**2 + (ny-c.y)**2);
+      if (d < 0.15 && Math.sign(c.q) !== Math.sign(dir)) nearCharge = true;
+    }
+    if (nearCharge) break;
+
+    wx = nx; wy = ny;
+    const {cx: cx2, cy: cy2} = worldToCanvas(wx, wy, W, H);
+    ctx.lineTo(cx2, cy2);
+  }
+  ctx.stroke();
+}
+
+function drawVector(ex, ey, mag) {
+  const W = 80, H = 80, cx = 40, cy = 40, r = 28;
+  vCtx.clearRect(0, 0, W, H);
+  vCtx.fillStyle = '#111128';
+  vCtx.fillRect(0, 0, W, H);
+
+  vCtx.beginPath();
+  vCtx.arc(cx, cy, r, 0, 2*Math.PI);
+  vCtx.strokeStyle = '#2a2a4a';
+  vCtx.lineWidth = 1;
+  vCtx.stroke();
+
+  vCtx.beginPath();
+  vCtx.moveTo(cx - r, cy); vCtx.lineTo(cx + r, cy);
+  vCtx.moveTo(cx, cy - r); vCtx.lineTo(cx, cy + r);
+  vCtx.strokeStyle = '#2a2a4a';
+  vCtx.stroke();
+
+  if (mag > 0.001) {
+    const norm = Math.min(mag / 5, 1);
+    const ux = ex / mag, uy = -ey / mag;
+    const tx = cx + ux * r * norm, ty = cy + uy * r * norm;
+
+    vCtx.beginPath();
+    vCtx.moveTo(cx, cy);
+    vCtx.lineTo(tx, ty);
+    vCtx.strokeStyle = '#00ffaa';
+    vCtx.lineWidth = 2.5;
+    vCtx.stroke();
+
+    const headLen = 8;
+    const angle = Math.atan2(ty - cy, tx - cx);
+    vCtx.beginPath();
+    vCtx.moveTo(tx, ty);
+    vCtx.lineTo(tx - headLen * Math.cos(angle - 0.4), ty - headLen * Math.sin(angle - 0.4));
+    vCtx.moveTo(tx, ty);
+    vCtx.lineTo(tx - headLen * Math.cos(angle + 0.4), ty - headLen * Math.sin(angle + 0.4));
+    vCtx.strokeStyle = '#00ffaa';
+    vCtx.lineWidth = 2;
+    vCtx.stroke();
+  }
+}
+
+function updateLabel(id, valId, prefix) {
+  const v = document.getElementById(id).value;
+  document.getElementById(valId).textContent = (prefix && +v >= 0 ? '+' : '') + (+v).toFixed(1);
+  const dot1 = document.getElementById('dot1');
+  const dot2 = document.getElementById('dot2');
+  if (dot1) dot1.style.background = +document.getElementById('c1q').value >= 0 ? '#ff4444' : '#4488ff';
+  if (dot2) dot2.style.background = +document.getElementById('c2q').value >= 0 ? '#ff4444' : '#4488ff';
+  draw();
+}
+
+document.getElementById('c1x').oninput = () => updateLabel('c1x','c1x-val',false);
+document.getElementById('c1y').oninput = () => updateLabel('c1y','c1y-val',false);
+document.getElementById('c1q').oninput = () => updateLabel('c1q','c1q-val',true);
+document.getElementById('c2x').oninput = () => updateLabel('c2x','c2x-val',false);
+document.getElementById('c2y').oninput = () => updateLabel('c2y','c2y-val',false);
+document.getElementById('c2q').oninput = () => updateLabel('c2q','c2q-val',true);
+document.getElementById('px').oninput  = () => updateLabel('px','px-val',false);
+document.getElementById('py').oninput  = () => updateLabel('py','py-val',false);
+
+function resetAll() {
+  document.getElementById('c1x').value = -1.0;
+  document.getElementById('c1y').value = 0.0;
+  document.getElementById('c1q').value = 1.0;
+  document.getElementById('c2x').value = 1.0;
+  document.getElementById('c2y').value = 0.0;
+  document.getElementById('c2q').value = -1.0;
+  document.getElementById('px').value  = 0.0;
+  document.getElementById('py').value  = 0.0;
+  ['c1x','c1y','c2x','c2y','px','py'].forEach(id => updateLabel(id, id+'-val', false));
+  updateLabel('c1q','c1q-val',true);
+  updateLabel('c2q','c2q-val',true);
+}
+
+window.addEventListener('resize', resize);
+resize();
+</script>
+</body>
+</html>
